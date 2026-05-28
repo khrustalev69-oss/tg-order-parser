@@ -72,7 +72,7 @@ def get_chat_id():
         return CHAT_ID_CACHE["target"]
     # Use numeric ID directly if possible
     try:
-        cid = int(FORWARD_TO)
+        cid = int(FORWARD_TO.strip('"').strip("'"))
         CHAT_ID_CACHE["target"] = cid
         log.info("Using direct chat_id: %s", cid)
         return cid
