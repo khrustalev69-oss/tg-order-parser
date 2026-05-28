@@ -68,6 +68,7 @@ HEADERS = {
 
 
 def get_chat_id():
+    # Try direct numeric ID first
     if "target" in CHAT_ID_CACHE:
         return CHAT_ID_CACHE["target"]
     try:
