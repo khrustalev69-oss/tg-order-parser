@@ -68,22 +68,32 @@ HEADERS = {
 
 
 def get_chat_id():
-    # Try direct numeric ID first
     if "target" in CHAT_ID_CACHE:
         return CHAT_ID_CACHE["target"]
+    # Use numeric ID directly if possible
     try:
-        r = requests.get(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/getChat",
-            params={"chat_id": FORWARD_TO}, timeout=10
+        cid = int(FORWARD_TO)
+        CHAT_ID_CACHE["target"] = cid
+        log.info("Using direct chat_id: %s", cid)
+        return cid
+    except (ValueError, TypeError):
+        pass
+    # Fallback: resolve via sendMessage to self
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={"chat_id": FORWARD_TO, "text": "🤖 Parser bot started!"}, timeout=10
         )
         data = r.json()
         if data.get("ok"):
-            cid = data["result"]["id"]
+            cid = data["result"]["chat"]["id"]
             CHAT_ID_CACHE["target"] = cid
-            log.info("Target chat_id: %s", cid)
+            log.info("Target chat_id resolved: %s", cid)
             return cid
+        else:
+            log.error("sendMessage failed: %s", data)
     except Exception as e:
-        log.error("getChat error: %s", e)
+        log.error("Error resolving chat_id: %s", e)
     return None
 
 
