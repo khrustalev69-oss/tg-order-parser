@@ -14,9 +14,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-BOT_TOKEN  = os.environ.get("BOT_TOKEN", "8846094085:AAEi3n24Ne_zrc069X4j6XCgoRlSJHxXjgk")
+BOT_TOKEN  = os.environ.get("BOT_TOKEN", "")
 FORWARD_TO = os.environ.get("FORWARD_TO", "@ygscors")
-INTERVAL   = int(os.environ.get("INTERVAL", "120"))  # секунды между проверками
+INTERVAL   = int(os.environ.get("INTERVAL", "120"))
 
 GROUPS = [
     "Kinopeople",
@@ -27,15 +27,31 @@ GROUPS = [
 ]
 
 KEYWORDS = [
-    "заказ", "нужен", "нужна", "нужно", "ищу", "куплю",
-    "требуется", "закажу", "ищем", "срочно", "бюджет",
-    "оплата", "нанимаю", "сниму", "найм", "вакансия",
-    "hire", "needed", "looking for",
+    "монтаж",
+    "съемка",
+    "съёмка",
+    "sde",
+    "режиссер",
+    "режиссёр",
+    "оператор",
+    "продюсер",
+    "продакшн",
+    "видеосъемка",
+    "видеосъёмка",
+    "режиссер монтажа",
+    "режиссёр монтажа",
 ]
 
 HASHTAGS = [
-    "заказ", "заявка", "съёмка", "проект", "вакансия",
-    "работа", "ищу", "нужен", "нужна", "кастинг",
+    "монтаж",
+    "съемка",
+    "съёмка",
+    "режиссер",
+    "оператор",
+    "продюсер",
+    "продакшн",
+    "видеосъемка",
+    "sde",
 ]
 
 kw_re = re.compile("|".join(re.escape(k) for k in KEYWORDS), re.IGNORECASE)
@@ -52,7 +68,6 @@ HEADERS = {
 
 
 def get_chat_id():
-    """Получить chat_id для @ygscors через Bot API."""
     if "target" in CHAT_ID_CACHE:
         return CHAT_ID_CACHE["target"]
     try:
@@ -72,15 +87,14 @@ def get_chat_id():
 
 
 def send_notification(chat_id, group, text, link, triggers):
-    """Отправить уведомление через бота."""
     short_text = text[:300] + ("..." if len(text) > 300 else "")
     msg = (
-        f"🔔 <b>Новый заказ!</b>\n"
+        f"🎬 <b>Найден заказ!</b>\n"
         f"📌 Группа: <b>{group}</b>\n"
         f"🏷 Триггеры: <code>{', '.join(triggers)}</code>\n"
         f"🕐 {datetime.now().strftime('%d.%m %H:%M')}\n\n"
         f"{short_text}\n\n"
-        f'<a href="{link}">Открыть сообщение</a>'
+        f'<a href="{link}">Открыть сообщение →</a>'
     )
     try:
         r = requests.post(
@@ -101,7 +115,6 @@ def send_notification(chat_id, group, text, link, triggers):
 
 
 def scrape_group(group_name, chat_id):
-    """Парсим последние сообщения группы."""
     url = f"https://t.me/s/{group_name}"
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
@@ -118,7 +131,6 @@ def scrape_group(group_name, chat_id):
 
         new_count = 0
         for msg in messages:
-            # ID сообщения
             msg_id = msg.get("data-post", "")
             if not msg_id:
                 continue
@@ -128,13 +140,11 @@ def scrape_group(group_name, chat_id):
                 continue
             seen_ids.add(uid)
 
-            # Текст
             text_el = msg.select_one(".tgme_widget_message_text")
             if not text_el:
                 continue
             text = text_el.get_text(separator=" ", strip=True)
 
-            # Проверяем ключевые слова
             kw = kw_re.findall(text)
             ht = ht_re.findall(text)
             if not kw and not ht:
@@ -157,6 +167,7 @@ def scrape_group(group_name, chat_id):
 
 def main():
     log.info("🚀 Scraper started")
+    log.info("Keywords: %s", KEYWORDS)
     log.info("Groups: %s", GROUPS)
     log.info("Interval: %ds", INTERVAL)
 
@@ -172,7 +183,7 @@ def main():
     while True:
         for group in GROUPS:
             scrape_group(group, chat_id)
-            time.sleep(3)  # пауза между запросами
+            time.sleep(3)
         log.info("⏳ Sleeping %ds...", INTERVAL)
         time.sleep(INTERVAL)
 
