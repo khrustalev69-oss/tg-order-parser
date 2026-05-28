@@ -78,6 +78,19 @@ async def main():
     me = await client.get_me()
     log.info("🚀 Userbot запущен как %s (@%s)", me.first_name, me.username)
     log.info("👀 Слежу за: %s", WATCH_CHATS)
+    # Отправляем тестовое сообщение при старте
+    try:
+        await client.send_message(FORWARD_TO,
+            "✅ <b>Userbot запущен!</b>\n"
+            f"👤 Аккаунт: {me.first_name} (@{me.username})\n"
+            "👀 Мониторю группы:\n" +
+            "\n".join(f"• {g}" for g in WATCH_CHATS) +
+            "\n\n🔑 Ключевых слов: " + str(len(KEYWORDS)),
+            parse_mode="html"
+        )
+        log.info("✅ Test message sent!")
+    except Exception as e:
+        log.error("Test message error: %s", e)
     await client.run_until_disconnected()
 
 
