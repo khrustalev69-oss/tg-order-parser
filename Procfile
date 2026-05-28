@@ -1,1 +1,1 @@
-web: python auth_server.py
+worker: python userbot.py
