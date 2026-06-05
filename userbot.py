@@ -30,6 +30,13 @@ WATCH_CHATS = [
     "theClapperChat",
 ]
 
+# Топики которые нужно ИГНОРИРОВАТЬ (портфолио, резюме и т.д.)
+EXCLUDED_TOPICS = [
+    "портфолио",
+    "резюме",
+    "portfolio",
+]
+
 KEYWORDS = [
     "монтаж", "съемка", "съёмка", "sde",
     "режиссер", "режиссёр", "оператор",
@@ -53,6 +60,21 @@ client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
 @client.on(events.NewMessage(chats=WATCH_CHATS))
 async def handler(event):
+    # Проверяем — не из запрещённого топика ли сообщение
+    if event.message.reply_to and hasattr(event.message.reply_to, 'reply_to_top_id'):
+        top_id = event.message.reply_to.reply_to_top_id
+        if top_id:
+            try:
+                topic_msg = await client.get_messages(event.chat_id, ids=top_id)
+                if topic_msg and hasattr(topic_msg, 'action') and hasattr(topic_msg.action, 'title'):
+                    title = topic_msg.action.title.lower()
+                    for excl in EXCLUDED_TOPICS:
+                        if excl in title:
+                            log.debug("Skipping topic: %s", topic_msg.action.title)
+                            return
+            except Exception:
+                pass
+
     text = event.message.text or event.message.message or ""
     kw = kw_re.findall(text)
     ht = ht_re.findall(text)
