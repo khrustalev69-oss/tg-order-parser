@@ -30,11 +30,38 @@ WATCH_CHATS = [
     "theClapperChat",
 ]
 
-# Топики которые нужно ИГНОРИРОВАТЬ (портфолио, резюме и т.д.)
+# Топики которые нужно ИГНОРИРОВАТЬ
 EXCLUDED_TOPICS = [
     "портфолио",
     "резюме",
     "portfolio",
+]
+
+# Хэштеги/слова в тексте → пропускаем (это чужое резюме/портфолио, не заказ)
+EXCLUDED_HASHTAGS = [
+    "#портфолио",
+    "#резюме",
+    "#portfolio",
+    "#обомне",
+    "#обо_мне",
+]
+
+# Если сообщение начинается с этих слов — это самопрезентация, не заказ
+EXCLUDED_STARTS = [
+    "меня зовут",
+    "привет, я ",
+    "привет! я ",
+    "я оператор",
+    "я режиссер",
+    "я режиссёр",
+    "я монтажер",
+    "я монтажёр",
+    "я продюсер",
+    "предлагаю услуги",
+    "ищу работу",
+    "ищу проекты",
+    "открыт к проектам",
+    "открыта к проектам",
 ]
 
 KEYWORDS = [
@@ -76,6 +103,20 @@ async def handler(event):
                 pass
 
     text = event.message.text or event.message.message or ""
+
+    # Пропускаем если в тексте есть стоп-хэштеги (это портфолио/резюме)
+    text_lower = text.lower()
+    for tag in EXCLUDED_HASHTAGS:
+        if tag in text_lower:
+            log.debug("Skipping: excluded hashtag %s", tag)
+            return
+
+    # Пропускаем самопрезентации
+    for start in EXCLUDED_STARTS:
+        if text_lower.startswith(start):
+            log.debug("Skipping: self-presentation")
+            return
+
     kw = kw_re.findall(text)
     ht = ht_re.findall(text)
     if not kw and not ht:
