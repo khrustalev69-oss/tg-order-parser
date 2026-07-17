@@ -4,6 +4,7 @@
 """
 import os
 import asyncio
+from urllib.parse import urlparse
 from aiohttp import web
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -12,6 +13,7 @@ from telethon.errors import SessionPasswordNeededError
 API_ID   = 2496
 API_HASH = "8da85b0d5bfe62527e5b244c209159c3"
 PHONE    = os.environ.get("PHONE", "").strip()
+SOCKS_PROXY = os.environ.get("SOCKS_PROXY", "").strip()
 
 pending = {}
 
@@ -105,6 +107,24 @@ function copySession(){
 client = None
 phone_hash = None
 
+
+def resolve_proxy():
+    if not SOCKS_PROXY:
+        return None
+
+    parsed = urlparse(SOCKS_PROXY)
+    if parsed.scheme not in {"socks5", "socks4"} or not parsed.hostname or not parsed.port:
+        raise RuntimeError("SOCKS_PROXY must look like socks5://host:port")
+
+    return (
+        parsed.scheme,
+        parsed.hostname,
+        parsed.port,
+        True,
+        parsed.username,
+        parsed.password,
+    )
+
 async def handle_index(request):
     return web.Response(text=HTML, content_type='text/html')
 
@@ -113,7 +133,7 @@ async def handle_request_code(request):
     if not PHONE:
         return web.json_response({"ok": False, "error": "Переменная PHONE не задана"})
     try:
-        client = TelegramClient(StringSession(), API_ID, API_HASH)
+        client = TelegramClient(StringSession(), API_ID, API_HASH, proxy=resolve_proxy())
         await client.connect()
         result = await client.send_code_request(PHONE)
         phone_hash = result.phone_code_hash
