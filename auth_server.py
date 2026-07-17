@@ -7,10 +7,11 @@ import asyncio
 from aiohttp import web
 from telethon import TelegramClient
 from telethon.sessions import StringSession
+from telethon.errors import SessionPasswordNeededError
 
 API_ID   = 2496
 API_HASH = "8da85b0d5bfe62527e5b244c209159c3"
-PHONE    = os.environ.get("PHONE", "+79054761971")
+PHONE    = os.environ.get("PHONE", "").strip()
 
 pending = {}
 
@@ -35,6 +36,11 @@ pre{background:#0d1117;padding:16px;border-radius:8px;word-break:break-all;font-
   <p>Введи код из Telegram:</p>
   <input id="code" placeholder="12345" maxlength="6">
   <button onclick="submitCode()">Войти</button>
+</div>
+<div id="step2b" style="display:none">
+  <p>Введи пароль 2FA:</p>
+  <input id="password" type="password" placeholder="Пароль Telegram">
+  <button onclick="submitPassword()">Подтвердить пароль</button>
 </div>
 <div id="step3" style="display:none">
   <div class="msg ok">✅ Готово! Скопируй session string в Railway Variables:</div>
@@ -62,7 +68,27 @@ async function submitCode(){
   const r=await fetch('/submit_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
   const d=await r.json();
   if(d.ok){
-    document.getElementById('step2').style.display='none';
+    if(d.requires_password){
+      document.getElementById('step2').style.display='none';
+      document.getElementById('step2b').style.display='block';
+      document.getElementById('msg').innerHTML='<div class="msg ok">Нужен пароль 2FA</div>';
+    } else {
+      document.getElementById('step2').style.display='none';
+      document.getElementById('step3').style.display='block';
+      document.getElementById('session').textContent=d.session;
+      document.getElementById('msg').innerHTML='';
+    }
+  } else {
+    document.getElementById('msg').innerHTML='<div class="msg err">Ошибка: '+d.error+'</div>';
+  }
+}
+async function submitPassword(){
+  const password=document.getElementById('password').value;
+  document.getElementById('msg').innerHTML='<div class="msg ok">Проверяю пароль...</div>';
+  const r=await fetch('/submit_password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+  const d=await r.json();
+  if(d.ok){
+    document.getElementById('step2b').style.display='none';
     document.getElementById('step3').style.display='block';
     document.getElementById('session').textContent=d.session;
     document.getElementById('msg').innerHTML='';
@@ -84,6 +110,8 @@ async def handle_index(request):
 
 async def handle_request_code(request):
     global client, phone_hash
+    if not PHONE:
+        return web.json_response({"ok": False, "error": "Переменная PHONE не задана"})
     try:
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
@@ -102,6 +130,20 @@ async def handle_submit_code(request):
         session = client.session.save()
         await client.disconnect()
         return web.json_response({"ok": True, "session": session})
+    except SessionPasswordNeededError:
+        return web.json_response({"ok": True, "requires_password": True})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)})
+
+async def handle_submit_password(request):
+    global client
+    data = await request.json()
+    password = data.get("password", "").strip()
+    try:
+        await client.sign_in(password=password)
+        session = client.session.save()
+        await client.disconnect()
+        return web.json_response({"ok": True, "session": session})
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)})
 
@@ -109,6 +151,7 @@ app = web.Application()
 app.router.add_get('/', handle_index)
 app.router.add_post('/request_code', handle_request_code)
 app.router.add_post('/submit_code', handle_submit_code)
+app.router.add_post('/submit_password', handle_submit_password)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

@@ -20,15 +20,15 @@ API_ID   = 2496
 API_HASH = "8da85b0d5bfe62527e5b244c209159c3"
 
 SESSION  = os.environ.get("SESSION_STRING", "")
-FORWARD_TO = int(os.environ.get("FORWARD_TO", "1900772820").strip('"').strip("'"))
+FORWARD_TO_RAW = os.environ.get("FORWARD_TO", "1900772820").strip().strip('"').strip("'")
 
-WATCH_CHATS = [
-    "Kinopeople",
+WATCH_CHATS = {
+    "kinopeople",
     "jetlagchat",
     "cam_mtg",
     "mediaordersgeneratione",
-    "theClapperChat",
-]
+    "theclapperchat",
+}
 
 # Топики которые нужно ИГНОРИРОВАТЬ
 EXCLUDED_TOPICS = [
@@ -82,11 +82,25 @@ HASHTAGS = [
 kw_re = re.compile("|".join(re.escape(k) for k in KEYWORDS), re.IGNORECASE)
 ht_re = re.compile(r"#(" + "|".join(re.escape(h) for h in HASHTAGS) + r")\b", re.IGNORECASE)
 
+if not SESSION:
+    raise RuntimeError("SESSION_STRING is required")
+
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
 
-@client.on(events.NewMessage(chats=WATCH_CHATS))
+def resolve_forward_target():
+    if re.fullmatch(r"-?\d+", FORWARD_TO_RAW):
+        return int(FORWARD_TO_RAW)
+    return FORWARD_TO_RAW.lstrip("@")
+
+
+@client.on(events.NewMessage())
 async def handler(event):
+    chat = await event.get_chat()
+    username = (getattr(chat, "username", None) or "").lower()
+    if username not in WATCH_CHATS:
+        return
+
     # Проверяем — не из запрещённого топика ли сообщение
     if event.message.reply_to and hasattr(event.message.reply_to, 'reply_to_top_id'):
         top_id = event.message.reply_to.reply_to_top_id
@@ -123,7 +137,6 @@ async def handler(event):
         return
 
     triggers = list(set(kw + ["#" + h for h in ht]))
-    chat = await event.get_chat()
     chat_name = getattr(chat, "title", None) or getattr(chat, "username", str(chat.id))
     log.info("✅ Match in %s | triggers: %s", chat_name, triggers)
 
@@ -132,8 +145,9 @@ async def handler(event):
         f"📌 <b>{chat_name}</b>\n"
         f"🏷 <code>{', '.join(triggers)}</code>"
     )
-    await client.send_message(FORWARD_TO, header, parse_mode="html")
-    await client.forward_messages(FORWARD_TO, event.message)
+    forward_target = resolve_forward_target()
+    await client.send_message(forward_target, header, parse_mode="html")
+    await client.forward_messages(forward_target, event.message)
 
 
 async def main():
@@ -143,7 +157,7 @@ async def main():
     log.info("👀 Слежу за: %s", WATCH_CHATS)
     # Отправляем тестовое сообщение при старте
     try:
-        await client.send_message(FORWARD_TO,
+        await client.send_message(resolve_forward_target(),
             "✅ <b>Userbot запущен!</b>\n"
             f"👤 Аккаунт: {me.first_name} (@{me.username})\n"
             "👀 Мониторю группы:\n" +
