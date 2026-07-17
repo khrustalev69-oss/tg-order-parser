@@ -5,6 +5,7 @@ Telegram Userbot — парсер заказов
 import os
 import re
 import logging
+from urllib.parse import urlparse
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -21,6 +22,7 @@ API_HASH = "8da85b0d5bfe62527e5b244c209159c3"
 
 SESSION  = os.environ.get("SESSION_STRING", "")
 FORWARD_TO_RAW = os.environ.get("FORWARD_TO", "1900772820").strip().strip('"').strip("'")
+SOCKS_PROXY = os.environ.get("SOCKS_PROXY", "").strip()
 
 WATCH_CHATS = {
     "kinopeople",
@@ -85,7 +87,26 @@ ht_re = re.compile(r"#(" + "|".join(re.escape(h) for h in HASHTAGS) + r")\b", re
 if not SESSION:
     raise RuntimeError("SESSION_STRING is required")
 
-client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
+
+def resolve_proxy():
+    if not SOCKS_PROXY:
+        return None
+
+    parsed = urlparse(SOCKS_PROXY)
+    if parsed.scheme not in {"socks5", "socks4"} or not parsed.hostname or not parsed.port:
+        raise RuntimeError("SOCKS_PROXY must look like socks5://host:port")
+
+    return (
+        parsed.scheme,
+        parsed.hostname,
+        parsed.port,
+        True,
+        parsed.username,
+        parsed.password,
+    )
+
+
+client = TelegramClient(StringSession(SESSION), API_ID, API_HASH, proxy=resolve_proxy())
 
 
 def resolve_forward_target():
