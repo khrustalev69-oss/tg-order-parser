@@ -8,6 +8,7 @@
 - `SESSION_STRING` — сессия Telegram-аккаунта, от имени которого работает парсер.
 - `FORWARD_TO` — числовой Telegram ID получателя или username без `@`.
 - `SOCKS_PROXY` — необязательный SOCKS4/5-прокси, например `socks5://host:1080`.
+- `TELEGRAM_API_ID` и `TELEGRAM_API_HASH` — персональные ключи с `my.telegram.org`.
 
 Номер телефона и сессионный ключ нельзя публиковать в GitHub.
 

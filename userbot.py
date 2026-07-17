@@ -16,9 +16,8 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# Telegram Web credentials (official app)
-API_ID   = 2496
-API_HASH = "8da85b0d5bfe62527e5b244c209159c3"
+API_ID = int(os.environ.get("TELEGRAM_API_ID", "2496"))
+API_HASH = os.environ.get("TELEGRAM_API_HASH", "8da85b0d5bfe62527e5b244c209159c3").strip()
 
 SESSION  = os.environ.get("SESSION_STRING", "")
 FORWARD_TO_RAW = os.environ.get("FORWARD_TO", "1900772820").strip().strip('"').strip("'")

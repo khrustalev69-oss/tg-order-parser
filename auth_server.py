@@ -10,8 +10,8 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
 
-API_ID   = 2496
-API_HASH = "8da85b0d5bfe62527e5b244c209159c3"
+API_ID = int(os.environ.get("TELEGRAM_API_ID", "2496"))
+API_HASH = os.environ.get("TELEGRAM_API_HASH", "8da85b0d5bfe62527e5b244c209159c3").strip()
 PHONE    = os.environ.get("PHONE", "").strip()
 SOCKS_PROXY = os.environ.get("SOCKS_PROXY", "").strip()
 
