@@ -9,6 +9,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s"
 )
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 BOT_TOKEN  = os.environ["BOT_TOKEN"]
 FORWARD_TO = os.environ.get("FORWARD_TO", "@ygscors")
