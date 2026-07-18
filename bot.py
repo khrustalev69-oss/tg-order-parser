@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN  = os.environ["BOT_TOKEN"]
 FORWARD_TO = os.environ.get("FORWARD_TO", "@ygscors")
+SOCKS_PROXY = os.environ.get("SOCKS_PROXY", "").strip()
 
 KEYWORDS = [
     "заказ", "нужен", "нужна", "нужно", "ищу", "куплю",
@@ -28,7 +29,7 @@ ht_re = re.compile(r"#(" + "|".join(re.escape(h) for h in HASHTAGS) + r")\b", re
 
 WATCH_USERNAMES = {
     "kinopeople", "jetlagchat", "cam_mtg",
-    "mediaordersgeneratione", "theclapperChat",
+    "mediaordersgeneratione", "theclapperchat",
 }
 
 
@@ -66,7 +67,10 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+    builder = Application.builder().token(BOT_TOKEN)
+    if SOCKS_PROXY:
+        builder = builder.proxy(SOCKS_PROXY).get_updates_proxy(SOCKS_PROXY)
+    app = builder.build()
     app.add_handler(MessageHandler(filters.ALL, handle))
     logger.info("Bot started, watching: %s", WATCH_USERNAMES)
     app.run_polling(drop_pending_updates=True)
