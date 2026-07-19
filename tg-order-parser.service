@@ -1,0 +1,16 @@
+[Unit]
+Description=Public Telegram order web scraper
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tg-order-parser
+EnvironmentFile=/etc/tg-order-parser.env
+ExecStart=/opt/tg-order-parser/.venv/bin/python /opt/tg-order-parser/web_scraper.py
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
