@@ -1,38 +1,19 @@
-# Telegram-парсер заказов
+# Публичный веб-парсер Telegram
 
-Парсер читает новые сообщения в заданных Telegram-чатах, отбирает заказы по
-ключевым словам и пересылает их в указанный аккаунт или чат.
+`web_scraper.py` работает без `my.telegram.org`, `API_ID`, `API_HASH` и пользовательской сессии. Он проверяет публичные страницы новых сообщений в пяти группах, отсеивает резюме и рекламу исполнителей и отправляет подходящие заказы через обычного BotFather-бота.
 
-## Переменные Railway
+Обязательные переменные окружения:
 
-- `SESSION_STRING` — сессия Telegram-аккаунта, от имени которого работает парсер.
-- `FORWARD_TO` — числовой Telegram ID получателя или username без `@`.
-- `SOCKS_PROXY` — необязательный SOCKS4/5-прокси, например `socks5://host:1080`.
-- `TELEGRAM_API_ID` и `TELEGRAM_API_HASH` — персональные ключи с `my.telegram.org`.
-
-Номер телефона и сессионный ключ нельзя публиковать в GitHub.
-
-## Получение SESSION_STRING
-
-Локально выполни:
-
-```bash
-cd "/Users/denishrustalev/Documents/New project/tg-order-parser"
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-PHONE=+79990000000 python auth_server.py
+```text
+BOT_TOKEN=токен BotFather
+FORWARD_TO=Telegram ID получателя
+SOCKS_PROXY=socks5://host:port
 ```
 
-Вместо `+79990000000` укажи номер второго Telegram-аккаунта. Затем открой
-`http://localhost:8080`, запроси код, введи код и при необходимости пароль 2FA.
-Полученный `SESSION_STRING` добавь в Railway Variables.
-
-## Запуск парсера локально
+Запуск:
 
 ```bash
-source .venv/bin/activate
-SESSION_STRING='полученная_строка' FORWARD_TO='telegram_id' python userbot.py
+python web_scraper.py
 ```
 
-На Railway команда запуска уже настроена: `python userbot.py`.
+Позиции групп сохраняются в `/var/lib/tg-order-parser/web-state.json`, поэтому после перезапуска сообщения не дублируются. Старые варианты `bot.py` и `userbot.py` оставлены только как архив и для запуска не нужны.
