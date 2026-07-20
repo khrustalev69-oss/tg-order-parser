@@ -76,14 +76,22 @@ def compile_terms(words: tuple[str, ...]) -> re.Pattern[str]:
 INTENT_RE = compile_terms(INTENT_WORDS)
 NICHE_RE = compile_terms(NICHE_WORDS)
 
+HIRING_TARGET_PATTERN = (
+    r"(?:видеограф\w*|монтаж(?:ер|ёр)?\w*|оператор\w*|режисс(?:ер|ёр)\w*|"
+    r"продюсер\w*|сценарист\w*|продакшн\w*|видеосъ[её]мк\w*|"
+    r"съ[её]мк\w*|видео\w*|ролик\w*|рилс\w*|reels\w*|motion\w*|"
+    r"моушн\w*|vfx\w*|sde\w*|клип\w*|интервью\w*|репортаж\w*|"
+    r"стрим\w*|прям(?:ой|ого|ому|ым)\s+эфир\w*)"
+)
+
 HIRING_RE = re.compile(
     r"(?<!\w)(?:ищу|ищем|нужен|нужна|нужны|нужно|требуется|требуются|"
     r"нанимаем|приглашаем|в\s+поиске)(?!\w)[^\n.!?]{0,80}"
-    r"(?<!\w)(?:" + "|".join(re.escape(word) for word in sorted(NICHE_WORDS, key=len, reverse=True)) + r")(?!\w)"
-    r"|(?<!\w)(?:" + "|".join(re.escape(word) for word in sorted(NICHE_WORDS, key=len, reverse=True)) + r")(?!\w)"
+    r"(?<!\w)" + HIRING_TARGET_PATTERN + r"(?!\w)"
+    r"|(?<!\w)" + HIRING_TARGET_PATTERN + r"(?!\w)"
     r"[^\n.!?]{0,40}(?<!\w)(?:нужен|нужна|нужны|требуется|требуются)(?!\w)"
     r"|(?<!\w)(?:вакансия|заказ)(?!\w)[^\n.!?]{0,80}"
-    r"(?<!\w)(?:" + "|".join(re.escape(word) for word in sorted(NICHE_WORDS, key=len, reverse=True)) + r")(?!\w)",
+    r"(?<!\w)" + HIRING_TARGET_PATTERN + r"(?!\w)",
     re.IGNORECASE,
 )
 
