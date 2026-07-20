@@ -1,12 +1,13 @@
 [Unit]
 Description=Public Telegram order web scraper
-After=network-online.target
-Wants=network-online.target
+After=network-online.target warp-svc.service
+Wants=network-online.target warp-svc.service
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/tg-order-parser
 EnvironmentFile=/etc/tg-order-parser.env
+ExecStartPre=/usr/bin/warp-cli connect
 ExecStart=/opt/tg-order-parser/.venv/bin/python /opt/tg-order-parser/web_scraper.py
 Restart=always
 RestartSec=10

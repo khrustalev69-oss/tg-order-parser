@@ -179,8 +179,13 @@ async def fetch_message(
         response = await client.get(url)
         response.raise_for_status()
         return parse_message_page(response.text)
-    except (httpx.HTTPError, httpx.TimeoutException) as error:
-        log.warning("Cannot fetch %s/%s: %s", source.username, message_id, error)
+    except Exception as error:
+        log.warning(
+            "Cannot fetch %s/%s: %s",
+            source.username,
+            message_id,
+            type(error).__name__,
+        )
         raise
 
 
@@ -213,7 +218,7 @@ async def scan_source(
     while consecutive_missing < gap_limit:
         try:
             exists, text = await fetch_message(client, source, candidate)
-        except httpx.HTTPError:
+        except Exception:
             return
 
         if not exists:
