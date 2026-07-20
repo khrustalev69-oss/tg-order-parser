@@ -56,7 +56,8 @@ NICHE_WORDS = (
 )
 EXCLUDED_MARKERS = (
     "#портфолио", "#резюме", "#portfolio", "#обомне", "#обо_мне",
-    "предлагаю услуги", "оказываю услуги", "беру заказы", "мои услуги",
+    "#помогу", "#ищуработу", "предлагаю услуги", "оказываю услуги",
+    "беру заказы", "мои услуги",
 )
 EXCLUDED_STARTS = (
     "меня зовут", "привет, я ", "привет! я ", "всем привет! я ",
@@ -66,8 +67,39 @@ EXCLUDED_STARTS = (
     "хочешь монтаж", "нужен монтаж, но",
 )
 
-INTENT_RE = re.compile("|".join(re.escape(word) for word in INTENT_WORDS), re.IGNORECASE)
-NICHE_RE = re.compile("|".join(re.escape(word) for word in NICHE_WORDS), re.IGNORECASE)
+
+def compile_terms(words: tuple[str, ...]) -> re.Pattern[str]:
+    alternatives = "|".join(re.escape(word) for word in sorted(words, key=len, reverse=True))
+    return re.compile(r"(?<!\w)(?:" + alternatives + r")(?!\w)", re.IGNORECASE)
+
+
+INTENT_RE = compile_terms(INTENT_WORDS)
+NICHE_RE = compile_terms(NICHE_WORDS)
+
+HIRING_RE = re.compile(
+    r"(?<!\w)(?:ищу|ищем|нужен|нужна|нужны|нужно|требуется|требуются|"
+    r"нанимаем|приглашаем|в\s+поиске)(?!\w)[^\n.!?]{0,80}"
+    r"(?<!\w)(?:" + "|".join(re.escape(word) for word in sorted(NICHE_WORDS, key=len, reverse=True)) + r")(?!\w)"
+    r"|(?<!\w)(?:" + "|".join(re.escape(word) for word in sorted(NICHE_WORDS, key=len, reverse=True)) + r")(?!\w)"
+    r"[^\n.!?]{0,40}(?<!\w)(?:нужен|нужна|нужны|требуется|требуются)(?!\w)"
+    r"|(?<!\w)(?:вакансия|заказ)(?!\w)[^\n.!?]{0,80}"
+    r"(?<!\w)(?:" + "|".join(re.escape(word) for word in sorted(NICHE_WORDS, key=len, reverse=True)) + r")(?!\w)",
+    re.IGNORECASE,
+)
+
+SELF_PROMO_RE = re.compile(
+    r"(?<!\w)(?:смонтирую|монтирую)(?!\w)"
+    r"|(?<!\w)(?:ищу|ищем)\s+(?:новых\s+)?(?:клиентов|заказы|работу|проекты)(?!\w)"
+    r"|(?<!\w)в\s+поиске[^\n.!?]{0,35}(?:проектов|заказов|клиентов)(?!\w)"
+    r"|(?<!\w)(?:мои|моё|мое)\s+(?:работы|кейсы|портфолио)(?!\w)"
+    r"|(?<!\w)примеры\s+(?:моих\s+)?работ(?!\w)"
+    r"|(?<!\w)я\s+(?:занимаюсь|начинающий|начинающая|монтажер|монтажёр|видеограф)(?!\w)"
+    r"|(?<!\w)работаю\s+в\s+(?:capcut|premiere|after\s+effects|davinci|blender)(?!\w)"
+    r"|(?<!\w)(?:обращайтесь|буду\s+рад(?:а)?\s+сотрудничеству)(?!\w)"
+    r"|(?<!\w)если\s+(?:(?:вам|кому-то)\s+)?нуж(?:ен|на|ны|но)(?!\w)"
+    r"|(?<!\w)ищете[^\n.!?]{0,50}\?",
+    re.IGNORECASE,
+)
 
 
 class TelegramWidgetParser(HTMLParser):
@@ -133,10 +165,12 @@ def classify_order(text: str) -> tuple[bool, list[str]]:
         return False, []
     if any(normalized.startswith(prefix) for prefix in EXCLUDED_STARTS):
         return False, []
+    if SELF_PROMO_RE.search(normalized):
+        return False, []
 
     intent = sorted(set(match.lower() for match in INTENT_RE.findall(normalized)))
     niche = sorted(set(match.lower() for match in NICHE_RE.findall(normalized)))
-    return bool(intent and niche), intent + niche
+    return bool(HIRING_RE.search(normalized)), intent + niche
 
 
 def initial_state() -> dict[str, int]:
