@@ -175,18 +175,24 @@ async def fetch_message(
     message_id: int,
 ) -> tuple[bool, str]:
     url = f"https://t.me/{source.username}/{message_id}?embed=1&mode=tme"
-    try:
-        response = await client.get(url)
-        response.raise_for_status()
-        return parse_message_page(response.text)
-    except Exception as error:
-        log.warning(
-            "Cannot fetch %s/%s: %s",
-            source.username,
-            message_id,
-            type(error).__name__,
-        )
-        raise
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            return parse_message_page(response.text)
+        except Exception as error:
+            last_error = error
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+
+    log.warning(
+        "Cannot fetch %s/%s after retries: %s",
+        source.username,
+        message_id,
+        type(last_error).__name__,
+    )
+    raise RuntimeError("Telegram message fetch failed") from last_error
 
 
 async def send_order(bot, target: int | str, source: Source, message_id: int, text: str, triggers: list[str]) -> None:
