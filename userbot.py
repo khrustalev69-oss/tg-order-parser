@@ -6,6 +6,7 @@ from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError
 from order_filter import classify_order
+from aiohttp import web
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -157,10 +158,22 @@ async def polling_worker(client):
             
         await asyncio.sleep(45)
 
+async def start_web_server():
+    """Легковесный HTTP-сервер для проверки статуса на Render / хостингах"""
+    port = int(os.environ.get("PORT", 8080))
+    async def index(request):
+        return web.Response(text="🚀 TG Order Parser is Running 24/7!", content_type="text/plain")
+        
+    app = web.Application()
+    app.router.add_get("/", index)
+    app.router.add_get("/health", index)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"🌐 Health-check веб-сервер запущен на порту {port}")
+
 async def run_client_lifecycle():
-    """
-    Запускает TelegramClient с бесконечным авто-переподключением при обрывах связи / сне Мака.
-    """
     while True:
         client = None
         try:
@@ -170,7 +183,7 @@ async def run_client_lifecycle():
                 API_ID,
                 API_HASH,
                 auto_reconnect=True,
-                connection_retries=None,  # бесконечные повторные попытки при обрыве Wi-Fi
+                connection_retries=None,
                 retry_delay=5
             )
             
@@ -183,7 +196,6 @@ async def run_client_lifecycle():
             me = await client.get_me()
             logger.info(f"🤖 Юзербот на связи: {me.first_name} (@{me.username}, ID: {me.id})")
             
-            # Проверяем получателей
             active_targets = []
             for t in TARGETS:
                 try:
@@ -193,24 +205,19 @@ async def run_client_lifecycle():
                 except Exception as e:
                     logger.error(f"Не удалось найти получателя {t}: {e}")
 
-            # Инициализация кэша
             await seed_initial_messages(client)
 
-            # Регистрация слушателя событий реального времени
             @client.on(events.NewMessage(chats=SOURCE_CHANNELS + ["@ygscors"]))
             async def real_time_handler(event):
                 await process_incoming_message(client, event.message)
 
-            # Фоновый поллер
-            poll_task = asyncio.create_task(polling_worker(client))
+            asyncio.create_task(polling_worker(client))
             
             logger.info("✨ Парсер полностью активен и слушает входящие заказы!")
-            
-            # Ждем пока клиент на связи
             await client.run_until_disconnected()
             
         except (ConnectionError, OSError, asyncio.TimeoutError) as e:
-            logger.warning(f"⚠️ Потеря интернет-соединения или сон Мака ({e}). Ожидание сети...")
+            logger.warning(f"⚠️ Сетевая задержка или потеря связи ({e}). Ожидание сети...")
             await asyncio.sleep(10)
         except Exception as e:
             logger.error(f"⚠️ Ошибка в жизненном цикле клиента: {e}. Перезапуск через 10 сек...", exc_info=True)
@@ -222,8 +229,15 @@ async def run_client_lifecycle():
                 except Exception:
                     pass
 
+async def main_async():
+    # Запускаем параллельно веб-сервер (для облака) и Телеграм-клиент
+    await asyncio.gather(
+        start_web_server(),
+        run_client_lifecycle()
+    )
+
 def main():
-    asyncio.run(run_client_lifecycle())
+    asyncio.run(main_async())
 
 if __name__ == "__main__":
     main()
